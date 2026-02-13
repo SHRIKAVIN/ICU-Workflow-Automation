@@ -14,6 +14,7 @@ interface AuthContextType {
   loginUser: (token: string, user: User) => void;
   logout: () => void;
   isDoctor: boolean;
+  isAuthLoaded: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextType>({
   loginUser: () => {},
   logout: () => {},
   isDoctor: false,
+  isAuthLoaded: false,
 });
 
 export function useAuth() {
@@ -76,6 +78,7 @@ export function useSettings() {
 export function Providers({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [isAuthLoaded, setIsAuthLoaded] = useState(false);
   const [socket, setSocketState] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const [dark, setDark] = useState(false);
@@ -89,6 +92,7 @@ export function Providers({ children }: { children: ReactNode }) {
       setUser(savedUser);
       setToken(savedToken);
     }
+    setIsAuthLoaded(true);
   }, []);
 
   // Init theme
@@ -167,7 +171,7 @@ export function Providers({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, loginUser, logout, isDoctor: user?.role === 'doctor' }}>
+    <AuthContext.Provider value={{ user, token, loginUser, logout, isDoctor: user?.role === 'doctor', isAuthLoaded }}>
       <SocketContext.Provider value={{ socket, connected }}>
         <ThemeContext.Provider value={{ dark, toggleDark }}>
           <SettingsContext.Provider value={{ voiceAlerts, toggleVoiceAlerts }}>
