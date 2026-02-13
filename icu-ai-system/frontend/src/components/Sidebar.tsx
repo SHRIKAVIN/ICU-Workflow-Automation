@@ -16,6 +16,8 @@ import {
   WifiOff,
   Volume2,
   VolumeX,
+  Bell,
+  BellOff,
   Activity,
   Menu,
   X,
@@ -37,7 +39,7 @@ export default function Sidebar() {
   const { user, logout } = useAuth();
   const { dark, toggleDark } = useTheme();
   const { connected } = useSocket();
-  const { voiceAlerts, toggleVoiceAlerts } = useSettings();
+  const { voiceAlerts, toggleVoiceAlerts, toastsEnabled, toggleToasts } = useSettings();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = () => {
@@ -97,6 +99,9 @@ export default function Sidebar() {
           <button onClick={toggleDark} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors" title="Toggle dark mode">
             {dark ? <Sun className="w-4 h-4 text-yellow-400" /> : <Moon className="w-4 h-4 text-gray-500" />}
           </button>
+          <button onClick={toggleToasts} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors" title="Toggle notifications">
+            {toastsEnabled ? <Bell className="w-4 h-4 text-hospital-500" /> : <BellOff className="w-4 h-4 text-gray-400" />}
+          </button>
           <button onClick={toggleVoiceAlerts} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors" title="Toggle voice alerts">
             {voiceAlerts ? <Volume2 className="w-4 h-4 text-hospital-500" /> : <VolumeX className="w-4 h-4 text-gray-400" />}
           </button>
@@ -110,7 +115,12 @@ export default function Sidebar() {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium truncate">{user?.name}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{user?.role}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 capitalize flex items-center gap-1">
+                {user?.role}
+                {user?.role === 'admin' && (
+                  <span className="inline-block px-1.5 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] font-semibold rounded-md uppercase">Admin</span>
+                )}
+              </p>
             </div>
           </div>
           <button onClick={handleLogout} className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Logout">

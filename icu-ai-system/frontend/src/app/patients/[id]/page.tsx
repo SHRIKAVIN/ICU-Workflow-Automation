@@ -7,12 +7,14 @@ import Sidebar from '@/components/Sidebar';
 import VitalsChart from '@/components/VitalsChart';
 import LiveVitalsCard from '@/components/LiveVitalsCard';
 import RiskBadge from '@/components/RiskBadge';
+import Modal from '@/components/ui/Modal';
 import { ChartSkeleton, CardSkeleton } from '@/components/ui/Skeleton';
 import { useSocket } from '@/providers';
 import { apiFetch } from '@/lib/auth';
-import { formatDate, getStatusBadgeClasses } from '@/lib/utils';
+import { cn, formatDate, getStatusBadgeClasses } from '@/lib/utils';
 import {
   ArrowLeft,
+  ArrowRightLeft,
   BedDouble,
   Calendar,
   User,
@@ -21,6 +23,10 @@ import {
   Activity,
   Clock,
   AlertTriangle,
+  Wind,
+  Monitor,
+  Droplets,
+  Shield,
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -63,6 +69,21 @@ interface AlertData {
   acknowledged: boolean;
 }
 
+interface AvailableBed {
+  _id: string;
+  bedNumber: number;
+  roomType: string;
+  ward: string;
+  floor: number;
+  features: {
+    hasVentilator: boolean;
+    hasMonitor: boolean;
+    hasOxygenSupply: boolean;
+    isIsolation: boolean;
+    nearNursingStation: boolean;
+  };
+}
+
 export default function PatientDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -72,6 +93,13 @@ export default function PatientDetailPage() {
   const [loading, setLoading] = useState(true);
   const { socket } = useSocket();
   const chartRef = useRef<HTMLDivElement>(null);
+
+  // Change bed state
+  const [showBedModal, setShowBedModal] = useState(false);
+  const [availableBeds, setAvailableBeds] = useState<AvailableBed[]>([]);
+  const [selectedBed, setSelectedBed] = useState('');
+  const [loadingBeds, setLoadingBeds] = useState(false);
+  const [transferring, setTransferring] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -156,6 +184,48 @@ export default function PatientDetailPage() {
     }
   };
 
+  const openChangeBed = async () => {
+    setShowBedModal(true);
+    setLoadingBeds(true);
+    try {
+      const beds = await apiFetch('/api/beds?status=available');
+      setAvailableBeds(beds);
+      setSelectedBed(beds.length > 0 ? beds[0]._id : '');
+    } catch (err) {
+      toast.error('Failed to load available beds');
+    } finally {
+      setLoadingBeds(false);
+    }
+  };
+
+  const handleTransfer = async () => {
+    if (!selectedBed || !patient) return;
+    setTransferring(true);
+    try {
+      const res = await apiFetch('/api/beds/transfer', {
+        method: 'POST',
+        body: JSON.stringify({ patientId: patient._id, targetBedId: selectedBed }),
+      });
+      toast.success(res.message || 'Bed changed successfully');
+      setShowBedModal(false);
+      fetchData(); // refresh patient data
+    } catch (err: any) {
+      toast.error(err.message || 'Transfer failed');
+    } finally {
+      setTransferring(false);
+    }
+  };
+
+  const roomTypeColor = (type: string) => {
+    switch (type) {
+      case 'icu': return 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400';
+      case 'normal': return 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400';
+      case 'isolation': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400';
+      case 'step-down': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
   const latestVitals = vitals.length > 0 ? vitals[vitals.length - 1] : null;
 
   return (
@@ -195,6 +265,12 @@ export default function PatientDetailPage() {
                         <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" /> {patient.gender}, {patient.age}y</span>
                         <span className="flex items-center gap-1"><BedDouble className="w-3.5 h-3.5" /> Bed {patient.bedNumber}</span>
                         <span className="flex items-center gap-1 uppercase text-xs bg-gray-100 dark:bg-slate-700 px-2 py-0.5 rounded">{patient.roomType}</span>
+                        <button
+                          onClick={openChangeBed}
+                          className="flex items-center gap-1 text-xs font-medium text-hospital-500 hover:text-hospital-600 bg-hospital-50 dark:bg-hospital-900/20 hover:bg-hospital-100 dark:hover:bg-hospital-900/30 px-2.5 py-1 rounded-lg transition-colors"
+                        >
+                          <ArrowRightLeft className="w-3 h-3" /> Change Bed
+                        </button>
                         <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> Admitted {formatDate(patient.admissionDate)}</span>
                       </div>
                     </div>
@@ -361,6 +437,78 @@ export default function PatientDetailPage() {
           )}
         </main>
       </div>
+
+      {/* Change Bed Modal */}
+      <Modal open={showBedModal} onClose={() => setShowBedModal(false)} title="Change Patient Bed" maxWidth="max-w-lg">
+        {loadingBeds ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="w-8 h-8 border-3 border-hospital-400 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Current: <strong>Bed {patient?.bedNumber}</strong> ({patient?.roomType})
+            </p>
+
+            {availableBeds.length > 0 ? (
+              <div className="space-y-2">
+                <label className="block text-sm font-medium mb-1">Select new bed</label>
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                  {availableBeds.map(bed => (
+                    <label
+                      key={bed._id}
+                      className={cn(
+                        'flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all',
+                        selectedBed === bed._id
+                          ? 'border-hospital-500 bg-hospital-50 dark:bg-hospital-900/20'
+                          : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600'
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="targetBed"
+                        value={bed._id}
+                        checked={selectedBed === bed._id}
+                        onChange={() => setSelectedBed(bed._id)}
+                        className="text-hospital-500 focus:ring-hospital-500"
+                      />
+                      <BedDouble className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-semibold">Bed {bed.bedNumber}</span>
+                          <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${roomTypeColor(bed.roomType)}`}>{bed.roomType}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-gray-500">{bed.ward} · Floor {bed.floor}</span>
+                          <div className="flex items-center gap-1 ml-auto">
+                            {bed.features?.hasVentilator && <span title="Ventilator"><Wind className="w-3 h-3 text-blue-400" /></span>}
+                            {bed.features?.hasMonitor && <span title="Monitor"><Monitor className="w-3 h-3 text-green-400" /></span>}
+                            {bed.features?.hasOxygenSupply && <span title="Oxygen"><Droplets className="w-3 h-3 text-cyan-400" /></span>}
+                            {bed.features?.isIsolation && <span title="Isolation"><Shield className="w-3 h-3 text-purple-400" /></span>}
+                          </div>
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-yellow-600 dark:text-yellow-400 py-4 text-center">No available beds at this time.</p>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-slate-700">
+              <button onClick={() => setShowBedModal(false)} className="btn-secondary text-sm !py-2.5 !px-5">Cancel</button>
+              <button
+                onClick={handleTransfer}
+                disabled={transferring || !selectedBed || availableBeds.length === 0}
+                className="btn-primary text-sm !py-2.5 !px-5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {transferring ? 'Transferring...' : 'Confirm Transfer'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </ProtectedRoute>
   );
 }

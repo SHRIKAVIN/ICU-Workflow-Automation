@@ -31,10 +31,13 @@ export default function LoginPage() {
     }
   };
 
-  const quickLogin = async (role: 'doctor' | 'nurse') => {
-    const creds = role === 'doctor'
-      ? { email: 'doctor@test.com', password: '123' }
-      : { email: 'nurse@test.com', password: '123' };
+  const quickLogin = async (role: 'doctor' | 'nurse' | 'admin') => {
+    const credsMap = {
+      doctor: { email: 'doctor@test.com', password: '123' },
+      nurse: { email: 'nurse@test.com', password: '123' },
+      admin: { email: 'admin@test.com', password: 'admin123' },
+    };
+    const creds = credsMap[role];
 
     setEmail(creds.email);
     setPassword(creds.password);
@@ -129,20 +132,27 @@ export default function LoginPage() {
           {/* Quick login buttons */}
           <div className="mt-6 pt-6 border-t border-white/10">
             <p className="text-center text-xs text-gray-400 mb-3">Quick Demo Login</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <button
                 onClick={() => quickLogin('doctor')}
                 disabled={loading}
                 className="py-2.5 px-4 bg-icu-600/20 hover:bg-icu-600/30 border border-icu-500/30 text-icu-400 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
               >
-                Doctor Login
+                Doctor
               </button>
               <button
                 onClick={() => quickLogin('nurse')}
                 disabled={loading}
                 className="py-2.5 px-4 bg-hospital-600/20 hover:bg-hospital-600/30 border border-hospital-500/30 text-hospital-400 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
               >
-                Nurse Login
+                Nurse
+              </button>
+              <button
+                onClick={() => quickLogin('admin')}
+                disabled={loading}
+                className="py-2.5 px-4 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/30 text-amber-400 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
+              >
+                Admin
               </button>
             </div>
           </div>

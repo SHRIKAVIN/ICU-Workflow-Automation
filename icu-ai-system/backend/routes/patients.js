@@ -35,8 +35,8 @@ router.get('/:id', verifyToken, async (req, res) => {
   }
 });
 
-// POST create patient (doctor only)
-router.post('/', verifyToken, requireRole('doctor'), async (req, res) => {
+// POST create patient (admin, doctor, nurse)
+router.post('/', verifyToken, requireRole('admin', 'doctor', 'nurse'), async (req, res) => {
   try {
     const { name, age, bedNumber, status, roomType, diagnosis, gender, assignedDoctor, assignedNurse } = req.body;
     if (!name || !age || !bedNumber) {
@@ -67,8 +67,8 @@ router.post('/', verifyToken, requireRole('doctor'), async (req, res) => {
   }
 });
 
-// PUT update patient (doctor only)
-router.put('/:id', verifyToken, requireRole('doctor'), async (req, res) => {
+// PUT update patient (admin, doctor, nurse)
+router.put('/:id', verifyToken, requireRole('admin', 'doctor', 'nurse'), async (req, res) => {
   try {
     const patient = await Patient.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!patient) return res.status(404).json({ error: 'Patient not found' });
@@ -83,8 +83,8 @@ router.put('/:id', verifyToken, requireRole('doctor'), async (req, res) => {
   }
 });
 
-// DELETE discharge patient (doctor only)
-router.delete('/:id', verifyToken, requireRole('doctor'), async (req, res) => {
+// DELETE discharge patient (admin, doctor, nurse)
+router.delete('/:id', verifyToken, requireRole('admin', 'doctor', 'nurse'), async (req, res) => {
   try {
     const patient = await Patient.findByIdAndUpdate(
       req.params.id,

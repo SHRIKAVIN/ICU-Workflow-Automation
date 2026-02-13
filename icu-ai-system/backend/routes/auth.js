@@ -8,7 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'icu-super-secret-key-2026';
 const USERS = [
   { email: 'doctor@test.com', password: '123', role: 'doctor', name: 'Dr. Sarah Wilson' },
   { email: 'nurse@test.com', password: '123', role: 'nurse', name: 'Nurse Amy Chen' },
-  { email: 'admin@test.com', password: '123', role: 'doctor', name: 'Admin User' }
+  { email: 'admin@test.com', password: 'admin123', role: 'admin', name: 'Admin User' }
 ];
 
 router.post('/login', (req, res) => {

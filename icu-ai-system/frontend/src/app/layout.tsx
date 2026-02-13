@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Toaster } from 'react-hot-toast';
+import CustomToaster from '@/components/CustomToaster';
 import { Providers } from '@/providers';
 import './globals.css';
 
@@ -27,18 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="antialiased">
         <Providers>
           {children}
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: 'var(--toast-bg, #fff)',
-                color: 'var(--toast-color, #333)',
-                borderRadius: '12px',
-                padding: '16px',
-              },
-            }}
-          />
+          <CustomToaster />
         </Providers>
       </body>
     </html>

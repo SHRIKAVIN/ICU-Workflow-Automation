@@ -14,6 +14,7 @@ interface AuthContextType {
   loginUser: (token: string, user: User) => void;
   logout: () => void;
   isDoctor: boolean;
+  isAdmin: boolean;
   isAuthLoaded: boolean;
 }
 
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   loginUser: () => {},
   logout: () => {},
   isDoctor: false,
+  isAdmin: false,
   isAuthLoaded: false,
 });
 
@@ -60,15 +62,19 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
-// Voice alert setting
+// Settings
 interface SettingsContextType {
   voiceAlerts: boolean;
   toggleVoiceAlerts: () => void;
+  toastsEnabled: boolean;
+  toggleToasts: () => void;
 }
 
 const SettingsContext = createContext<SettingsContextType>({
   voiceAlerts: false,
   toggleVoiceAlerts: () => {},
+  toastsEnabled: true,
+  toggleToasts: () => {},
 });
 
 export function useSettings() {
@@ -83,6 +89,7 @@ export function Providers({ children }: { children: ReactNode }) {
   const [connected, setConnected] = useState(false);
   const [dark, setDark] = useState(false);
   const [voiceAlerts, setVoiceAlerts] = useState(false);
+  const [toastsEnabled, setToastsEnabled] = useState(true);
 
   // Init auth from localStorage
   useEffect(() => {
@@ -101,6 +108,10 @@ export function Providers({ children }: { children: ReactNode }) {
     if (savedTheme === 'true') {
       setDark(true);
       document.documentElement.classList.add('dark');
+    }
+    const savedToasts = localStorage.getItem('icu_toasts_enabled');
+    if (savedToasts === 'false') {
+      setToastsEnabled(false);
     }
   }, []);
 
@@ -121,12 +132,16 @@ export function Providers({ children }: { children: ReactNode }) {
       // Listen for critical alerts and show toast + voice
       s.on('newAlert', (alert: { severity: string; message: string; patientName: string }) => {
         if (alert.severity === 'critical') {
-          toast.error(alert.message, { duration: 8000, icon: '🚨' });
+          if (toastsEnabled) {
+            toast.error(alert.message, { duration: 8000, icon: '🚨' });
+          }
           if (voiceAlerts) {
             speakAlert(`Critical alert: ${alert.message}`);
           }
         } else if (alert.severity === 'medium') {
-          toast(alert.message, { duration: 5000, icon: '⚠️' });
+          if (toastsEnabled) {
+            toast(alert.message, { duration: 5000, icon: '⚠️' });
+          }
         }
       });
 
@@ -136,7 +151,7 @@ export function Providers({ children }: { children: ReactNode }) {
         s.off('newAlert');
       };
     }
-  }, [token, voiceAlerts]);
+  }, [token, voiceAlerts, toastsEnabled]);
 
   const loginUser = useCallback((newToken: string, newUser: User) => {
     setAuth(newToken, newUser);
@@ -170,11 +185,19 @@ export function Providers({ children }: { children: ReactNode }) {
     setVoiceAlerts(prev => !prev);
   }, []);
 
+  const toggleToasts = useCallback(() => {
+    setToastsEnabled(prev => {
+      const next = !prev;
+      localStorage.setItem('icu_toasts_enabled', String(next));
+      return next;
+    });
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, token, loginUser, logout, isDoctor: user?.role === 'doctor', isAuthLoaded }}>
+    <AuthContext.Provider value={{ user, token, loginUser, logout, isDoctor: user?.role === 'doctor', isAdmin: user?.role === 'admin', isAuthLoaded }}>
       <SocketContext.Provider value={{ socket, connected }}>
         <ThemeContext.Provider value={{ dark, toggleDark }}>
-          <SettingsContext.Provider value={{ voiceAlerts, toggleVoiceAlerts }}>
+          <SettingsContext.Provider value={{ voiceAlerts, toggleVoiceAlerts, toastsEnabled, toggleToasts }}>
             {children}
           </SettingsContext.Provider>
         </ThemeContext.Provider>
