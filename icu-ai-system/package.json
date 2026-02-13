@@ -1,0 +1,17 @@
+{
+  "name": "icu-ai-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-Driven Smart ICU Patient Monitoring & Hospital Workflow Automation System",
+  "scripts": {
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:ai": "cd ai-service && uvicorn main:app --reload --port 8000",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "seed": "cd backend && node utils/seed.js",
+    "install:all": "cd frontend && npm install && cd ../backend && npm install && cd ../ai-service && pip install -r requirements.txt"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
