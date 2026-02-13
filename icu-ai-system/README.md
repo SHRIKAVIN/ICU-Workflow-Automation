@@ -47,39 +47,72 @@ icu-ai-system/
 
 ### Prerequisites
 - Node.js 18+ and npm
-- Python 3.10+
-- MongoDB (local or Docker)
+- Python 3.10+ (with pip3)
+- MongoDB 7+ (local via Homebrew or Docker)
 
-### 1. Start MongoDB
+### 1. Install & Start MongoDB
 
+#### macOS (Homebrew) — recommended for local dev
+```bash
+# Install MongoDB
+brew tap mongodb/brew
+brew install mongodb-community
+
+# Start MongoDB service
+brew services start mongodb/brew/mongodb-community
+
+# Verify it's running
+mongosh --eval "db.adminCommand('ping')"
+```
+
+#### Docker (alternative)
 ```bash
 cd icu-ai-system
 docker-compose up db -d
 ```
 
-Or use local MongoDB running on `mongodb://localhost:27017`.
+#### Other Systems
+- **Ubuntu/Debian**: https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-ubuntu/
+- **Windows**: https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-windows/
+- MongoDB should be accessible at `mongodb://localhost:27017`
 
 ### 2. Install Dependencies
 
+Open a terminal and navigate to the project root:
+
 ```bash
-# Backend
+cd icu-ai-system
+```
+
+**Backend:**
+```bash
 cd backend
 npm install
-
-# Frontend
-cd ../frontend
-npm install
-
-# AI Service
-cd ../ai-service
-pip install -r requirements.txt
+cd ..
 ```
+
+**Frontend:**
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+**AI Service:**
+```bash
+cd ai-service
+pip3 install -r requirements.txt
+cd ..
+```
+
+> **Note:** On some systems, use `pip` instead of `pip3`. If pip is not found, try `python3 -m pip install -r requirements.txt`.
 
 ### 3. Seed the Database
 
 ```bash
 cd backend
 npm run seed
+cd ..
 ```
 
 This creates:
@@ -90,41 +123,72 @@ This creates:
 
 ### 4. Start All Services
 
-**Terminal 1 — Backend (port 3001):**
+You need **3 separate terminal windows/tabs**. Run one command per terminal:
+
+**Terminal 1 — Backend API (port 3001):**
 ```bash
-cd backend
+cd icu-ai-system/backend
 npm run dev
 ```
 
 **Terminal 2 — AI Service (port 8000):**
 ```bash
-cd ai-service
-uvicorn main:app --reload --port 8000
+cd icu-ai-system/ai-service
+python3 -m uvicorn main:app --reload --port 8000
 ```
 
 **Terminal 3 — Frontend (port 3000):**
 ```bash
-cd frontend
+cd icu-ai-system/frontend
 npm run dev
 ```
 
+> **Tip:** You can also run backend + frontend together from the project root:
+> ```bash
+> cd icu-ai-system
+> npm install        # installs concurrently
+> npm run dev        # runs backend + frontend
+> ```
+> (You still need to start the AI service separately in another terminal.)
+
 ### 5. Open the App
 
-Visit **http://localhost:3000**
+Visit **http://localhost:3000** in your browser.
 
 **Demo Credentials:**
-| Email | Password | Role |
-|-------|----------|------|
-| doctor@test.com | 123 | Doctor (full access) |
-| nurse@test.com | 123 | Nurse (read-only) |
+| Email | Password | Role | Access |
+|-------|----------|------|--------|
+| doctor@test.com | 123 | Doctor | Full access (read + write) |
+| nurse@test.com | 123 | Nurse | Read-only access |
+
+Use the **Quick Demo Login** buttons on the login page for one-click access.
+
+### Stopping Services
+
+```bash
+# Stop MongoDB (macOS Homebrew)
+brew services stop mongodb/brew/mongodb-community
+
+# Stop Docker MongoDB
+docker-compose down
+
+# Stop backend/frontend/ai-service: press Ctrl+C in each terminal
+```
 
 ## Docker Compose (Full Stack)
 
+Run all services (MongoDB + Backend + AI + Frontend) with a single command:
+
 ```bash
+cd icu-ai-system
 docker-compose up --build
 ```
 
-This starts MongoDB, Backend, AI Service, and Frontend together.
+Services will be available at:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:3001
+- AI Service: http://localhost:8000
+- MongoDB: localhost:27017
 
 ## API Endpoints
 
