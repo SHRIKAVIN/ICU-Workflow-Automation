@@ -27,6 +27,7 @@ import {
   Monitor,
   Droplets,
   Shield,
+  Video,
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -350,6 +351,30 @@ export default function PatientDetailPage() {
                   icon="activity"
                   status={latestVitals ? (latestVitals.riskScore > 0.7 ? 'critical' : latestVitals.riskScore > 0.4 ? 'warning' : 'normal') : 'normal'}
                 />
+              </div>
+
+              {/* Live Patient Video (dummy placeholder) */}
+              <div className="glass-card overflow-hidden mb-6">
+                <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100 dark:border-slate-700/50">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <Video className="w-5 h-5 text-hospital-500" />
+                    Live Patient Video
+                  </h2>
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-red-500">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    LIVE
+                  </span>
+                </div>
+                <div className="relative aspect-video bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 overflow-hidden">
+                  {/* Simulated video placeholder - scan line effect */}
+                  <div className="absolute inset-0 opacity-[0.03] bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(255,255,255,0.1)_2px,rgba(255,255,255,0.1)_4px)]" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
+                    <Video className="w-16 h-16 mb-3 opacity-40" />
+                    <p className="text-sm font-medium">Bed {patient.bedNumber} · Room Camera</p>
+                    <p className="text-xs mt-1 opacity-75">camera feed will display here</p>
+                    <p className="text-[10px] mt-4 text-gray-600">{new Date().toLocaleTimeString()}</p>
+                  </div>
+                </div>
               </div>
 
               {/* Charts */}

@@ -97,7 +97,8 @@ app.use((err, req, res, next) => {
 // Connect to MongoDB and start server
 const PORT = process.env.PORT || 3001;
 
-mongoose.connect(process.env.MONGO_URI)
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/icu_system';
+mongoose.connect(MONGO_URI)
   .then(() => {
     logger.info('Connected to MongoDB');
     server.listen(PORT, () => {
