@@ -5,7 +5,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Sidebar from '@/components/Sidebar';
 import Modal from '@/components/ui/Modal';
 import { CardSkeleton } from '@/components/ui/Skeleton';
-import { useSocket, useAuth } from '@/providers';
+import { useSocket, useAuth, useSidebar } from '@/providers';
 import { apiFetch } from '@/lib/auth';
 import { cn, getStatusBadgeClasses } from '@/lib/utils';
 import Link from 'next/link';
@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import {
   BedDouble, User, AlertTriangle, Wrench, CheckCircle, ArrowDown, ArrowUp, Brain, Shield,
-  Wind, Activity, Monitor, Droplets, Filter, RefreshCw, Sparkles, Plus, Pencil, Trash2, UserPlus,
+  Wind, Activity, Monitor, Droplets, Filter, RefreshCw, Sparkles, Plus, Pencil, Trash2, UserPlus, MapPin,
 } from 'lucide-react';
 
 interface BedFeatures {
@@ -94,6 +94,7 @@ export default function BedsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const { socket } = useSocket();
   const { isAdmin, user } = useAuth();
+  const { sidebarOpen } = useSidebar();
   const canEditBeds = isAdmin; // admin only: add, edit, delete beds
   const canChangeRoom = user?.role === 'doctor' || user?.role === 'nurse' || isAdmin; // doctor/nurse/admin: transfer from AI recs & allocation
 
@@ -325,7 +326,7 @@ export default function BedsPage() {
     <ProtectedRoute>
       <div className="flex min-h-screen">
         <Sidebar />
-        <main className="flex-1 md:ml-64 p-4 md:p-8">
+        <main className={cn('flex-1 p-4 md:p-8 transition-all duration-300', sidebarOpen ? 'md:ml-64' : 'md:ml-20')}>
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
@@ -335,6 +336,9 @@ export default function BedsPage() {
               <p className="text-gray-500 dark:text-gray-400 mt-1">Smart allocation & monitoring</p>
             </div>
             <div className="flex items-center gap-3">
+              <Link href="/hospital-layout" className="btn-secondary text-sm !py-2 !px-4 flex items-center gap-2">
+                <MapPin className="w-4 h-4" /> Hospital Layout
+              </Link>
               {canEditBeds && (
                 <button onClick={openCreate} className="btn-primary text-sm !py-2 !px-4 flex items-center gap-2">
                   <Plus className="w-4 h-4" /> Add Bed

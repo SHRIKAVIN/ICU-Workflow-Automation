@@ -81,6 +81,21 @@ export function useSettings() {
   return useContext(SettingsContext);
 }
 
+// Sidebar Context (collapse/expand)
+interface SidebarContextType {
+  sidebarOpen: boolean;
+  toggleSidebar: () => void;
+}
+
+const SidebarContext = createContext<SidebarContextType>({
+  sidebarOpen: true,
+  toggleSidebar: () => {},
+});
+
+export function useSidebar() {
+  return useContext(SidebarContext);
+}
+
 export function Providers({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -90,6 +105,21 @@ export function Providers({ children }: { children: ReactNode }) {
   const [dark, setDark] = useState(false);
   const [voiceAlerts, setVoiceAlerts] = useState(false);
   const [toastsEnabled, setToastsEnabled] = useState(true);
+  const [sidebarOpen, setSidebarOpenState] = useState(true);
+
+  // Init sidebar state from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('icu_sidebar_open');
+    if (saved === 'false') setSidebarOpenState(false);
+  }, []);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpenState(prev => {
+      const next = !prev;
+      localStorage.setItem('icu_sidebar_open', String(next));
+      return next;
+    });
+  }, []);
 
   // Init auth from localStorage
   useEffect(() => {
@@ -198,7 +228,9 @@ export function Providers({ children }: { children: ReactNode }) {
       <SocketContext.Provider value={{ socket, connected }}>
         <ThemeContext.Provider value={{ dark, toggleDark }}>
           <SettingsContext.Provider value={{ voiceAlerts, toggleVoiceAlerts, toastsEnabled, toggleToasts }}>
-            {children}
+            <SidebarContext.Provider value={{ sidebarOpen, toggleSidebar }}>
+              {children}
+            </SidebarContext.Provider>
           </SettingsContext.Provider>
         </ThemeContext.Provider>
       </SocketContext.Provider>

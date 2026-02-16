@@ -6,7 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import RiskBadge from '@/components/RiskBadge';
 import Modal from '@/components/ui/Modal';
 import { TableSkeleton } from '@/components/ui/Skeleton';
-import { useSocket, useAuth } from '@/providers';
+import { useSocket, useAuth, useSidebar } from '@/providers';
 import { apiFetch } from '@/lib/auth';
 import { getStatusBadgeClasses, formatDate } from '@/lib/utils';
 import Link from 'next/link';
@@ -41,6 +41,7 @@ export default function PatientsPage() {
   const [roomFilter, setRoomFilter] = useState('');
   const { socket } = useSocket();
   const { isAdmin, user } = useAuth();
+  const { sidebarOpen } = useSidebar();
   const canEditPatients = true; // all roles can manage patients
 
   // CRUD state
@@ -137,7 +138,7 @@ export default function PatientsPage() {
     <ProtectedRoute>
       <div className="flex min-h-screen">
         <Sidebar />
-        <main className="flex-1 md:ml-64 p-4 md:p-8">
+        <main className={`flex-1 p-4 md:p-8 transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'md:ml-20'}`}>
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>

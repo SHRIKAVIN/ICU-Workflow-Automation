@@ -6,7 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import LiveVitalsCard from '@/components/LiveVitalsCard';
 import RiskBadge from '@/components/RiskBadge';
 import { CardSkeleton } from '@/components/ui/Skeleton';
-import { useSocket, useAuth } from '@/providers';
+import { useSocket, useAuth, useSidebar } from '@/providers';
 import { apiFetch } from '@/lib/auth';
 import { cn, formatDate, getStatusBadgeClasses } from '@/lib/utils';
 import {
@@ -88,6 +88,7 @@ export default function DashboardPage() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const { socket } = useSocket();
   const { user } = useAuth();
+  const { sidebarOpen } = useSidebar();
 
   const fetchData = useCallback(async () => {
     try {
@@ -162,7 +163,7 @@ export default function DashboardPage() {
     <ProtectedRoute>
       <div className="flex min-h-screen">
         <Sidebar />
-        <main className="flex-1 md:ml-64 p-4 md:p-8">
+        <main className={cn('flex-1 p-4 md:p-8 transition-all duration-300', sidebarOpen ? 'md:ml-64' : 'md:ml-20')}>
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
             <div>

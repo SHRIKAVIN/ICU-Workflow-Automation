@@ -9,7 +9,7 @@ import LiveVitalsCard from '@/components/LiveVitalsCard';
 import RiskBadge from '@/components/RiskBadge';
 import Modal from '@/components/ui/Modal';
 import { ChartSkeleton, CardSkeleton } from '@/components/ui/Skeleton';
-import { useSocket, useAuth } from '@/providers';
+import { useSocket, useAuth, useSidebar } from '@/providers';
 import { apiFetch } from '@/lib/auth';
 import { cn, formatDate, getStatusBadgeClasses } from '@/lib/utils';
 import {
@@ -94,6 +94,7 @@ export default function PatientDetailPage() {
   const [loading, setLoading] = useState(true);
   const { socket } = useSocket();
   const { user } = useAuth();
+  const { sidebarOpen } = useSidebar();
   const canChangeRoom = user?.role === 'doctor' || user?.role === 'nurse';
   const chartRef = useRef<HTMLDivElement>(null);
 
@@ -235,7 +236,7 @@ export default function PatientDetailPage() {
     <ProtectedRoute>
       <div className="flex min-h-screen">
         <Sidebar />
-        <main className="flex-1 md:ml-64 p-4 md:p-8">
+        <main className={cn('flex-1 p-4 md:p-8 transition-all duration-300', sidebarOpen ? 'md:ml-64' : 'md:ml-20')}>
           {/* Back button */}
           <Link href="/patients" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mb-6 transition-colors">
             <ArrowLeft className="w-4 h-4" />
