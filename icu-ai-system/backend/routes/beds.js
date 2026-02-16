@@ -80,8 +80,8 @@ router.post('/recommend', verifyToken, async (req, res) => {
   }
 });
 
-// POST create bed (admin, doctor, nurse)
-router.post('/', verifyToken, requireRole('admin', 'doctor', 'nurse'), async (req, res) => {
+// POST create bed (admin only)
+router.post('/', verifyToken, requireRole('admin'), async (req, res) => {
   try {
     const { bedNumber, roomType, ward, floor, status, features, notes } = req.body;
     if (!bedNumber || !roomType || !ward) {
@@ -102,8 +102,8 @@ router.post('/', verifyToken, requireRole('admin', 'doctor', 'nurse'), async (re
   }
 });
 
-// PUT update bed (admin, doctor, nurse)
-router.put('/:id', verifyToken, requireRole('admin', 'doctor', 'nurse'), async (req, res) => {
+// PUT update bed (admin only)
+router.put('/:id', verifyToken, requireRole('admin'), async (req, res) => {
   try {
     const bed = await Bed.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!bed) return res.status(404).json({ error: 'Bed not found' });
@@ -116,8 +116,8 @@ router.put('/:id', verifyToken, requireRole('admin', 'doctor', 'nurse'), async (
   }
 });
 
-// DELETE bed (admin, doctor, nurse)
-router.delete('/:id', verifyToken, requireRole('admin', 'doctor', 'nurse'), async (req, res) => {
+// DELETE bed (admin only)
+router.delete('/:id', verifyToken, requireRole('admin'), async (req, res) => {
   try {
     const bed = await Bed.findById(req.params.id);
     if (!bed) return res.status(404).json({ error: 'Bed not found' });
@@ -134,7 +134,7 @@ router.delete('/:id', verifyToken, requireRole('admin', 'doctor', 'nurse'), asyn
   }
 });
 
-// POST allocate bed
+// POST allocate bed (admin, doctor, nurse)
 router.post('/allocate', verifyToken, requireRole('admin', 'doctor', 'nurse'), async (req, res) => {
   try {
     const { bedId, patientId } = req.body;
@@ -170,7 +170,7 @@ router.post('/release', verifyToken, requireRole('admin', 'doctor', 'nurse'), as
   }
 });
 
-// POST transfer patient between beds (step-down / escalation)
+// POST transfer patient between beds (doctor, nurse - change room only)
 router.post('/transfer', verifyToken, requireRole('admin', 'doctor', 'nurse'), async (req, res) => {
   try {
     const { patientId, targetBedId } = req.body;

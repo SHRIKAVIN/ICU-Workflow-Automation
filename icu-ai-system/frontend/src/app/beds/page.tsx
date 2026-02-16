@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import {
   BedDouble, User, AlertTriangle, Wrench, CheckCircle, ArrowDown, ArrowUp, Brain, Shield,
-  Wind, Activity, Monitor, Droplets, Filter, RefreshCw, Sparkles, Plus, Pencil, Trash2,
+  Wind, Activity, Monitor, Droplets, Filter, RefreshCw, Sparkles, Plus, Pencil, Trash2, UserPlus,
 } from 'lucide-react';
 
 interface BedFeatures {
@@ -71,6 +71,14 @@ interface EscalationRecommendation {
   availableBeds: AvailableBed[];
 }
 
+interface PatientOption {
+  _id: string;
+  name: string;
+  bedNumber: number;
+  roomType: string;
+  status: string;
+}
+
 const emptyBedForm = {
   bedNumber: '', roomType: 'icu', ward: '', floor: '1', status: 'available', notes: '',
   hasVentilator: false, hasMonitor: true, hasOxygenSupply: true, isIsolation: false, nearNursingStation: false,
@@ -86,7 +94,8 @@ export default function BedsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const { socket } = useSocket();
   const { isAdmin, user } = useAuth();
-  const canEditBeds = true; // all roles can manage beds
+  const canEditBeds = isAdmin; // admin only: add, edit, delete beds
+  const canChangeRoom = user?.role === 'doctor' || user?.role === 'nurse' || isAdmin; // doctor/nurse/admin: transfer from AI recs & allocation
 
   // CRUD state
   const [showModal, setShowModal] = useState(false);
@@ -102,31 +111,60 @@ export default function BedsPage() {
   const [selectedTargetBed, setSelectedTargetBed] = useState('');
   const [transferring, setTransferring] = useState(false);
 
+  // Bed Allocation section (admin only)
+  const [allocationPatient, setAllocationPatient] = useState('');
+  const [allocationBed, setAllocationBed] = useState('');
+  const [allocating, setAllocating] = useState(false);
+  const [patients, setPatients] = useState<PatientOption[]>([]);
+  const [availableBedsForAllocation, setAvailableBedsForAllocation] = useState<AvailableBed[]>([]);
+
   const fetchData = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (typeFilter) params.set('roomType', typeFilter);
       if (statusFilter) params.set('status', statusFilter);
 
-      const [bedsData, statsData, stepDown, escalation] = await Promise.all([
+      const fetches: Promise<unknown>[] = [
         apiFetch(`/api/beds?${params.toString()}`),
         apiFetch('/api/beds/stats'),
         apiFetch('/api/beds/recommendations/step-down'),
         apiFetch('/api/beds/recommendations/escalation'),
-      ]);
+      ];
 
-      setBeds(bedsData);
-      setStats(statsData);
-      setStepDownRecs(stepDown);
-      setEscalationRecs(escalation);
+      if (isAdmin) {
+        fetches.push(
+          apiFetch('/api/patients'),
+          apiFetch('/api/beds?status=available'),
+        );
+      }
+
+      const results = await Promise.all(fetches);
+      setBeds(results[0] as Bed[]);
+      setStats(results[1] as BedStats);
+      setStepDownRecs(results[2] as StepDownRecommendation[]);
+      setEscalationRecs(results[3] as EscalationRecommendation[]);
+
+      if (isAdmin && results.length > 4) {
+        const pts = (results[4] as PatientOption[]).filter((p: PatientOption) => p.status !== 'discharged');
+        setPatients(pts);
+        setAvailableBedsForAllocation(results[5] as AvailableBed[]);
+      }
     } catch (err) {
       console.error('Error fetching bed data:', err);
     } finally {
       setLoading(false);
     }
-  }, [typeFilter, statusFilter]);
+  }, [typeFilter, statusFilter, isAdmin]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Set initial allocation values when data loads
+  useEffect(() => {
+    if (patients.length > 0 && !allocationPatient) setAllocationPatient(patients[0]._id);
+  }, [patients, allocationPatient]);
+  useEffect(() => {
+    if (availableBedsForAllocation.length > 0 && !allocationBed) setAllocationBed(availableBedsForAllocation[0]._id);
+  }, [availableBedsForAllocation, allocationBed]);
 
   useEffect(() => {
     if (!socket) return;
@@ -231,6 +269,28 @@ export default function BedsPage() {
     }
   };
 
+  const handleAllocate = async () => {
+    if (!allocationPatient || !allocationBed) {
+      toast.error('Select a patient and a bed');
+      return;
+    }
+    setAllocating(true);
+    try {
+      const res = await apiFetch('/api/beds/transfer', {
+        method: 'POST',
+        body: JSON.stringify({ patientId: allocationPatient, targetBedId: allocationBed }),
+      });
+      toast.success(res.message || 'Patient allocated successfully');
+      setAllocationPatient(patients[0]?._id || '');
+      setAllocationBed(availableBedsForAllocation[0]?._id || '');
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || 'Allocation failed');
+    } finally {
+      setAllocating(false);
+    }
+  };
+
   const bedStatusIcon = (status: string) => {
     switch (status) {
       case 'occupied': return <User className="w-4 h-4 text-blue-500" />;
@@ -275,9 +335,11 @@ export default function BedsPage() {
               <p className="text-gray-500 dark:text-gray-400 mt-1">Smart allocation & monitoring</p>
             </div>
             <div className="flex items-center gap-3">
-              <button onClick={openCreate} className="btn-primary text-sm !py-2 !px-4 flex items-center gap-2">
-                <Plus className="w-4 h-4" /> Add Bed
-              </button>
+              {canEditBeds && (
+                <button onClick={openCreate} className="btn-primary text-sm !py-2 !px-4 flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> Add Bed
+                </button>
+              )}
               <button onClick={fetchData} className="btn-secondary text-sm !py-2 !px-4 flex items-center gap-2">
                 <RefreshCw className="w-4 h-4" /> Refresh
               </button>
@@ -337,6 +399,58 @@ export default function BedsPage() {
                 ))}
               </div>
 
+              {/* Bed Allocation (admin only) */}
+              {canEditBeds && (
+                <div className="glass-card p-6 mb-6">
+                  <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <UserPlus className="w-5 h-5 text-hospital-500" />
+                    Bed Allocation
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Assign or transfer patients to available beds. Only available beds are shown.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-4 items-end">
+                    <div className="flex-1 min-w-0">
+                      <label className="block text-sm font-medium mb-1">Patient</label>
+                      <select
+                        value={allocationPatient}
+                        onChange={e => setAllocationPatient(e.target.value)}
+                        className="input-field w-full"
+                      >
+                        {patients.map(p => (
+                          <option key={p._id} value={p._id}>
+                            {p.name} — Bed {p.bedNumber} ({p.roomType})
+                          </option>
+                        ))}
+                        {patients.length === 0 && <option value="">No patients</option>}
+                      </select>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <label className="block text-sm font-medium mb-1">Target Bed (available only)</label>
+                      <select
+                        value={allocationBed}
+                        onChange={e => setAllocationBed(e.target.value)}
+                        className="input-field w-full"
+                      >
+                        {availableBedsForAllocation.map(b => (
+                          <option key={b._id} value={b._id}>
+                            Bed {b.bedNumber} — {b.ward} ({b.roomType})
+                          </option>
+                        ))}
+                        {availableBedsForAllocation.length === 0 && <option value="">No available beds</option>}
+                      </select>
+                    </div>
+                    <button
+                      onClick={handleAllocate}
+                      disabled={allocating || !allocationPatient || !allocationBed || patients.length === 0 || availableBedsForAllocation.length === 0}
+                      className="btn-primary text-sm !py-2.5 !px-5 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {allocating ? 'Transferring...' : 'Transfer to Bed'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* AI Recommendations */}
               {(stepDownRecs.length > 0 || escalationRecs.length > 0) && (
                 <div className="mb-6">
@@ -351,7 +465,7 @@ export default function BedsPage() {
                             <ArrowUp className="w-4 h-4 text-red-500" />
                             <span className="text-sm font-semibold text-red-600 dark:text-red-400">Escalation Needed</span>
                           </div>
-                          {rec.availableBeds?.length > 0 && (
+                          {rec.availableBeds?.length > 0 && canChangeRoom && (
                             <button
                               onClick={() => openTransferModal(rec.patient._id, rec.patient.name, rec.availableBeds, 'escalation')}
                               className="text-xs font-semibold px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-1"
@@ -378,7 +492,7 @@ export default function BedsPage() {
                             <ArrowDown className="w-4 h-4 text-green-500" />
                             <span className="text-sm font-semibold text-green-600 dark:text-green-400">Step-Down Opportunity</span>
                           </div>
-                          {rec.availableBeds?.length > 0 && (
+                          {rec.availableBeds?.length > 0 && canChangeRoom && (
                             <button
                               onClick={() => openTransferModal(rec.patient._id, rec.patient.name, rec.availableBeds, 'step-down')}
                               className="text-xs font-semibold px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-1"
@@ -449,15 +563,17 @@ export default function BedsPage() {
                   const hasPatient = bed.patientId && typeof bed.patientId === 'object';
                   const cardContent = (
                     <>
-                      {/* Edit/Delete actions */}
-                      <div className="absolute top-1.5 right-1.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={e => e.preventDefault()}>
-                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); openEdit(bed); }} className="p-1 rounded bg-white/80 dark:bg-slate-800/80 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-500" title="Edit">
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeleteConfirm(bed); }} className="p-1 rounded bg-white/80 dark:bg-slate-800/80 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500" title="Delete">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
+                      {/* Edit/Delete actions (admin only) */}
+                      {canEditBeds && (
+                        <div className="absolute top-1.5 right-1.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={e => e.preventDefault()}>
+                          <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); openEdit(bed); }} className="p-1 rounded bg-white/80 dark:bg-slate-800/80 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-500" title="Edit">
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                          <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeleteConfirm(bed); }} className="p-1 rounded bg-white/80 dark:bg-slate-800/80 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500" title="Delete">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
 
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-mono font-bold text-lg">{bed.bedNumber}</span>

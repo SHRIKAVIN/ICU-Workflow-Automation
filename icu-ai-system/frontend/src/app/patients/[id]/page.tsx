@@ -9,7 +9,7 @@ import LiveVitalsCard from '@/components/LiveVitalsCard';
 import RiskBadge from '@/components/RiskBadge';
 import Modal from '@/components/ui/Modal';
 import { ChartSkeleton, CardSkeleton } from '@/components/ui/Skeleton';
-import { useSocket } from '@/providers';
+import { useSocket, useAuth } from '@/providers';
 import { apiFetch } from '@/lib/auth';
 import { cn, formatDate, getStatusBadgeClasses } from '@/lib/utils';
 import {
@@ -93,6 +93,8 @@ export default function PatientDetailPage() {
   const [alerts, setAlerts] = useState<AlertData[]>([]);
   const [loading, setLoading] = useState(true);
   const { socket } = useSocket();
+  const { user } = useAuth();
+  const canChangeRoom = user?.role === 'doctor' || user?.role === 'nurse';
   const chartRef = useRef<HTMLDivElement>(null);
 
   // Change bed state
@@ -266,12 +268,14 @@ export default function PatientDetailPage() {
                         <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" /> {patient.gender}, {patient.age}y</span>
                         <span className="flex items-center gap-1"><BedDouble className="w-3.5 h-3.5" /> Bed {patient.bedNumber}</span>
                         <span className="flex items-center gap-1 uppercase text-xs bg-gray-100 dark:bg-slate-700 px-2 py-0.5 rounded">{patient.roomType}</span>
-                        <button
-                          onClick={openChangeBed}
-                          className="flex items-center gap-1 text-xs font-medium text-hospital-500 hover:text-hospital-600 bg-hospital-50 dark:bg-hospital-900/20 hover:bg-hospital-100 dark:hover:bg-hospital-900/30 px-2.5 py-1 rounded-lg transition-colors"
-                        >
-                          <ArrowRightLeft className="w-3 h-3" /> Change Bed
-                        </button>
+                        {canChangeRoom && (
+                          <button
+                            onClick={openChangeBed}
+                            className="flex items-center gap-1 text-xs font-medium text-hospital-500 hover:text-hospital-600 bg-hospital-50 dark:bg-hospital-900/20 hover:bg-hospital-100 dark:hover:bg-hospital-900/30 px-2.5 py-1 rounded-lg transition-colors"
+                          >
+                            <ArrowRightLeft className="w-3 h-3" /> Change Bed
+                          </button>
+                        )}
                         <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> Admitted {formatDate(patient.admissionDate)}</span>
                       </div>
                     </div>
